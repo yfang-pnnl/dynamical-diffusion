@@ -87,7 +87,7 @@ training:
     learning_rate: 1e-4
   batch_size: 4                # Per GPU (effective batch = n_gpu × batch_size × accumulate_grad_batches)
   num_workers: 2               # Auto-reduced for multi-GPU to avoid overhead
-  validation_freq: 100000
+  validation_freq: 1500        # Validate every ~1 epoch (1508 batches total)
   accumulate_grad_batches: 4   # Single GPU: effective_batch=4, Multi-GPU (4): effective_batch=16
   logger:
     save_dir: ./logs/custom_pflotran/pflotran_identity
