@@ -2,9 +2,9 @@
 #SBATCH -J pflo-dl-4gpu
 #SBATCH -A dl_calibration
 #SBATCH --exclusive
-#SBATCH -t 6:00:00
+#SBATCH -t 3:00:00
 #SBATCH -N 1
-#SBATCH --gres=gpu:4
+#SBATCH --gres=gpu:8
 #SBATCH -p a100_80
 ##SBATCH -p h100_shared
 ##SBATCH --ntasks-per-node=1     
@@ -29,11 +29,11 @@ setenv PYTORCH_CUDA_ALLOC_CONF max_split_size_mb:128
 # Multi-GPU training with DDP
 python core/train_pflotran_dydiff.py \
   --config_file core/models/pflotran_identity.yaml \
-  --n_gpu 4 \
-  --find_unused_parameters False
+  --n_gpu 8 \
+  --find_unused_parameters True
 
 # Notes:
 # - Batch size per GPU: 1 (effective batch = 4 GPUs * 1 * accumulate_grad_batches)
-# - If you get DDP errors about unused parameters, add: --find_unused_parameters True
+# - find_unused_parameters True: Required for this model (some parameters not used in all forward passes)
 # - Each GPU processes independently, gradients are synchronized
 # - Checkpoints are saved by rank 0 GPU only
