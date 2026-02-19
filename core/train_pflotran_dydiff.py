@@ -72,7 +72,8 @@ def create_loggers(cfg):
     )
     checkpoint_logger = ModelCheckpoint(
         dirpath=cfg.training.logger.save_dir,
-        every_n_train_steps=cfg.training.logger.checkpoint_freq,
+        every_n_epochs=cfg.training.logger.checkpoint_freq_epochs if 'checkpoint_freq_epochs' in cfg.training.logger else 1,
+        every_n_train_steps=cfg.training.logger.checkpoint_freq if 'checkpoint_freq' in cfg.training.logger else 0,
         save_top_k=-1
     )
     return [image_logger, checkpoint_logger]
@@ -145,7 +146,8 @@ if __name__=='__main__':
         accumulate_grad_batches=cfg.training.accumulate_grad_batches,
         val_check_interval=int(cfg.training.validation_freq) if cfg.training.validation_freq is not None else float(1.),
         num_sanity_val_steps=0,
-        sync_batchnorm=True if args.n_gpu > 1 else False  # Sync batch norm across GPUs
+        sync_batchnorm=True if args.n_gpu > 1 else False,  # Sync batch norm across GPUs
+        gradient_clip_val=cfg.training.gradient_clip_val if 'gradient_clip_val' in cfg.training else None,  # Optional gradient clipping
     )
     
     # Configure DDP strategy if using multiple GPUs
