@@ -1,0 +1,39 @@
+#!/bin/csh
+#SBATCH -J pflo-dl-4gpu
+#SBATCH -A dl_calibration
+#SBATCH --exclusive
+#SBATCH -t 6:00:00
+#SBATCH -N 1
+#SBATCH --gres=gpu:4
+#SBATCH -p a100_80
+##SBATCH -p h100_shared
+##SBATCH --ntasks-per-node=1     
+#SBATCH -o logs_t/pflo_%A_%a.out
+#SBATCH -e logs_t/pflo_%A_%a.err
+
+# === Multi-GPU (DDP) Training Configuration ===
+# This uses 4 GPUs with PyTorch DistributedDataParallel
+# Expected performance: ~4x speedup over single GPU
+# Training time: ~22 hours -> ~5-6 hours
+
+source /people/d3m045/.cshrc_vs
+conda activate dydiff
+
+# Reduce memory fragmentation
+setenv PYTORCH_CUDA_ALLOC_CONF max_split_size_mb:128
+
+# DDP environment variables (optional, usually auto-configured)
+# setenv MASTER_ADDR localhost
+# setenv MASTER_PORT 12355
+
+# Multi-GPU training with DDP
+python core/train_pflotran_dydiff.py \
+  --config_file core/models/pflotran_identity.yaml \
+  --n_gpu 4 \
+  --find_unused_parameters False
+
+# Notes:
+# - Batch size per GPU: 1 (effective batch = 4 GPUs * 1 * accumulate_grad_batches)
+# - If you get DDP errors about unused parameters, add: --find_unused_parameters True
+# - Each GPU processes independently, gradients are synchronized
+# - Checkpoints are saved by rank 0 GPU only

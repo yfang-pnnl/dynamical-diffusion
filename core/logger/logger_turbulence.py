@@ -5,7 +5,7 @@ import torch
 import torchvision
 from PIL import Image
 from pytorch_lightning.callbacks import Callback
-from pytorch_lightning.utilities.distributed import rank_zero_only
+from pytorch_lightning.utilities.rank_zero import rank_zero_only
 
 from datasets.normalizer import NullNormalizer
 from logger.visualization_turbulence import save_plots
@@ -60,6 +60,10 @@ class ImageLoggerWithKeyToConcat(Callback):
                     save_img(datum_to_plot.cpu().numpy(), batch_root, filename)
 
     def log_img(self, pl_module, batch, batch_idx, split="train"):
+        # Skip first batch if log_first_step is False
+        if not self.log_first_step and batch_idx == 0 and pl_module.global_step == 0:
+            return
+            
         check_idx = batch_idx  # if self.log_on_batch_idx else pl_module.global_step
         if (self.check_frequency(check_idx) and  # batch_idx % self.batch_freq == 0
                 hasattr(pl_module, "log_images") and
@@ -90,8 +94,10 @@ class ImageLoggerWithKeyToConcat(Callback):
                 pl_module.train()
 
     def check_frequency(self, check_idx):
+        if self.batch_freq is None:
+            return False  # Disabled when logger_freq is null
         return check_idx % self.batch_freq == 0
 
-    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx):
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
         if not self.disabled:
             self.log_img(pl_module, batch, batch_idx, split="train")

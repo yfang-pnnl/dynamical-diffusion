@@ -1,0 +1,27 @@
+#!/bin/csh
+#SBATCH -J pflo-dl
+#SBATCH -A dl_calibration
+#SBATCH --exclusive
+#SBATCH -t 3:00:00
+#SBATCH -N 1
+#SBATCH --gres=gpu:1
+#SBATCH -p a100_80_shared
+##SBATCH -p h100_shared
+##SBATCH -p a100_80
+##SBATCH --ntasks-per-node=1     
+#SBATCH -o logs_t/pflo_%A_%a.out
+#SBATCH -e logs_t/pflo_%A_%a.err
+
+# === Configuration ===
+# For SINGLE GPU: Use this file as-is
+# For MULTI-GPU (4 GPUs): Use job_multi_gpu.sub instead, or:
+#   1. Change: #SBATCH --gres=gpu:1  ->  #SBATCH --gres=gpu:4
+#   2. Change: --n_gpu 1  ->  --n_gpu 4
+
+source /people/d3m045/.cshrc_vs
+conda activate dydiff
+
+# Reduce memory fragmentation
+setenv PYTORCH_CUDA_ALLOC_CONF max_split_size_mb:128
+
+# Single GPU training

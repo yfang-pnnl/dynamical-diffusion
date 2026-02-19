@@ -1,0 +1,101 @@
+# Configuration file for training dynamical diffusion on custom PFLOTRAN simulations
+# USING IDENTITY VAE (No compression, no pre-training needed)
+# 
+# Replace DATA_ROOT with your actual data directory path
+# Update the paths below to point to your prepared data
+
+data:
+  # Path to your prepared data files
+  perm_path: /qfs/projects/dl_calibration/d3m045/test_dd/output/perm.npy
+  poro_path: /qfs/projects/dl_calibration/d3m045/test_dd/output/poro.npy
+  conc_path: /qfs/projects/dl_calibration/d3m045/test_dd/output/conc.npy
+  
+  # Path to split indices
+  train_idx_path: /qfs/projects/dl_calibration/d3m045/test_dd/output/train_idx.npy
+  val_idx_path: /qfs/projects/dl_calibration/d3m045/test_dd/output/val_idx.npy
+  test_idx_path: /qfs/projects/dl_calibration/d3m045/test_dd/output/test_idx.npy
+
+  # Temporal parameters
+  pred_length: 20              # Number of timesteps to predict (days)
+  input_length: 20             # Number of input timesteps (days)
+  total_length: 40             # Total: input + pred
+  t_keep: 240                  # Use only first 240 days
+  dt: 1                        # Timestep interval (1 = every day)
+
+model:
+  target: dydiff.dydiff_pflotran.DynamicalLDMForPFLOTRANWithStaticCondition
+  params:
+    total_length: 40
+    input_length: 20
+    x_channels: 1              # Concentration is 1 channel
+    z_channels: 1              # Identity VAE preserves channels (1 -> 1)
+    static_latent_channels: 4
+    static_downsample: 1
+
+    # Diffusion schedule
+    timesteps: 1000
+    beta_schedule: cosine
+    linear_start: 0.00085
+    linear_end: 0.0120
+
+    # Gamma schedule for variance
+    gamma_schedule: "cosine-0.5"
+    linear_start_gamma: 0.
+    linear_end_gamma: 0.
+
+    # Stage 1: Identity (No compression, pass-through)
+    first_stage_key: "image"
+    first_stage_key_prev: "prev"
+    cond_stage_key: "cond"
+    conditioning_key: "concat-video-mask-1st-static"
+    cond_stage_config:
+      target: torch.nn.Identity
+
+    # Validation settings
+    validate_kwargs:
+      ddim: True
+      ddim_steps: 50
+      ddim_eta: 0.
+
+    # First stage: Identity (Pass-through)
+    first_stage_config:
+        target: ldm.models.autoencoder.IdentityFirstStage
+        params:
+            embed_dim: 1  # Not used but good for consistency
+
+    # UNet for diffusion (REDUCED FOR BETTER GENERALIZATION)
+    unet_config:
+      target: sgm.modules.diffusionmodules.video_model.VideoUNet
+      params:
+        num_video_frames: 0     # Will be set automatically
+        in_channels: 0          # Will be set automatically
+        out_channels: 0         # Will be set automatically
+        model_channels: 32      # Reduced from 64 to prevent overfitting
+        attention_resolutions: [2]
+        num_res_blocks: 1       # Reduced from 2
+        channel_mult: [1, 2]    # Reduced from [1,2,4]
+        num_heads: 2            # Reduced from 4
+        transformer_depth: 1
+        spatial_transformer_attn_type: softmax
+        extra_ff_mix_layer: True
+        merge_strategy: learned
+        video_kernel_size: [3, 1, 1]
+
+training:
+  max_iterations: 20000        # Train longer with smaller model
+  model_attrs:
+    learning_rate: 5e-5        # Reduced from 1e-4 for stability
+  batch_size: 4                # Per GPU (effective batch = n_gpu × batch_size × accumulate_grad_batches)
+  num_workers: 2               # Auto-reduced for multi-GPU to avoid overhead
+  validation_freq: 100000
+  accumulate_grad_batches: 4   # Single GPU: effective_batch=4, Multi-GPU (4): effective_batch=16
+  logger:
+    save_dir: ./logs/custom_pflotran/pflotran_identity
+    logger_freq: null           # Log images every N steps
+    checkpoint_freq: 2000      # Save checkpoint every N steps
+
+eval:
+  num_vis: 5                  # Number of samples to visualize during validation
+
+# Checkpoint path (set when resuming training)
+ckpt_path: null

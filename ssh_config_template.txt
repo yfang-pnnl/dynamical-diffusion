@@ -1,0 +1,46 @@
+# SSH Config Template for X11 Forwarding
+# 
+# This file should be added to your LOCAL machine's SSH config file:
+#   Windows: C:\Users\YourUsername\.ssh\config
+#   Mac/Linux: ~/.ssh/config
+#
+# Instructions:
+# 1. Copy the content below
+# 2. Open VS Code on your LOCAL machine
+# 3. Press Ctrl+Shift+P (Cmd+Shift+P on Mac)
+# 4. Type: "Remote-SSH: Open SSH Configuration File"
+# 5. Paste the content below (or merge with existing config)
+# 6. Save and reconnect to the remote host
+
+# ================================================
+# Configuration for deception03 with X11 forwarding
+# ================================================
+
+Host deception03
+    HostName deception03.pnnl.gov
+    User d3m045
+    ForwardX11 yes
+    ForwardX11Trusted yes
+    ForwardAgent yes
+
+# If you want X11 for all hosts, uncomment below:
+# Host *
+#     ForwardX11 yes
+#     ForwardX11Trusted yes
+
+# ================================================
+# Additional helpful settings (optional)
+# ================================================
+
+# Keep connection alive
+Host *
+    ServerAliveInterval 60
+    ServerAliveCountMax 3
+
+# ================================================
+# REMEMBER: You still need an X Server running on your LOCAL machine!
+# 
+# Windows: Install and run VcXsrv (https://sourceforge.net/projects/vcxsrv/)
+# Mac: Install and run XQuartz (https://www.xquartz.org/)
+# Linux: X11 is usually pre-installed
+# ================================================

@@ -1,0 +1,48 @@
+#!/bin/csh
+#SBATCH -J pflo-eval
+#SBATCH -A dl_calibration
+#SBATCH -t 1:00:00
+#SBATCH -N 1
+#SBATCH --gres=gpu:1
+#SBATCH -p a100_80_shared
+#SBATCH -o logs_t/eval_%A_%a.out
+#SBATCH -e logs_t/eval_%A_%a.err
+
+# ===== PFLOTRAN Model Evaluation Script =====
+# This script evaluates a trained checkpoint on the test set
+# and generates predictions for visualization and metric computation.
+
+# Configuration - EDIT THESE
+setenv CHECKPOINT "logs/custom_pflotran/pflotran_identity/epoch=15-step=6000.ckpt"
+setenv CONFIG_FILE "core/models/pflotran_identity_eval.yaml"
+setenv N_GPU 1
+
+# Activate environment
+source /people/d3m045/.cshrc_vs
+conda activate dydiff
+
+echo "========================================="
+echo "PFLOTRAN Model Evaluation"
+echo "========================================="
+echo "Checkpoint: $CHECKPOINT"
+echo "Config: $CONFIG_FILE"
+echo "========================================="
+echo ""
+
+# Run evaluation (test mode)
+python core/train_pflotran_dydiff.py \
+  --config_file $CONFIG_FILE \
+  --n_gpu $N_GPU \
+  --test True \
+  --resume $CHECKPOINT
+
+echo ""
+echo "========================================="
+echo "Evaluation Complete!"
+echo "========================================="
+echo ""
+echo "Output saved to: logs/custom_pflotran/pflotran_identity/output_for_evaluation_*/"
+echo ""
+echo "Next steps:"
+echo "  1. Visualize results: python core/evaluation/visualize_pflotran.py"
+echo "  2. Plot metrics: python core/evaluation/plot_pflotran_metrics.py ..."

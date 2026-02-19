@@ -329,11 +329,22 @@ class CrossAttention(nn.Module):
         out = einsum('b i j, b j d -> b i d', sim, v)
         """
         ## new
-        with sdp_kernel(**BACKEND_MAP[self.backend]):
-            # print("dispatching into backend", self.backend, "q/k/v shape: ", q.shape, k.shape, v.shape)
-            out = F.scaled_dot_product_attention(
-                q, k, v, attn_mask=mask
-            )  # scale is dim_head ** -0.5 per default
+        if SDP_IS_AVAILABLE and self.backend in BACKEND_MAP:
+            with sdp_kernel(**BACKEND_MAP[self.backend]):
+                # print("dispatching into backend", self.backend, "q/k/v shape: ", q.shape, k.shape, v.shape)
+                out = F.scaled_dot_product_attention(
+                    q, k, v, attn_mask=mask
+                )  # scale is dim_head ** -0.5 per default
+        else:
+            # Fallback for PyTorch < 2.0 or when backend not available
+            sim = torch.einsum('b h i d, b h j d -> b h i j', q, k) * (q.shape[-1] ** -0.5)
+            if mask is not None:
+                mask = rearrange(mask, 'b ... -> b (...)')
+                max_neg_value = -torch.finfo(sim.dtype).max
+                mask = repeat(mask, 'b j -> (b h) () j', h=h)
+                sim.masked_fill_(~mask, max_neg_value)
+            sim = sim.softmax(dim=-1)
+            out = torch.einsum('b h i j, b h j d -> b h i d', sim, v)
 
         del q, k, v
         out = rearrange(out, "b h n d -> b n (h d)", h=h)
@@ -484,16 +495,15 @@ class BasicTransformerBlock(nn.Module):
             attn_mode = "softmax"
         elif attn_mode == "softmax" and not SDP_IS_AVAILABLE:
             logpy.warn(
-                "We do not support vanilla attention anymore, as it is too "
-                "expensive. Sorry."
+                "We normally do not support vanilla attention anymore, as it is too "
+                "expensive. However, proceeding with vanilla attention since "
+                "xformers is unavailable and the data scale is small."
             )
-            if not XFORMERS_IS_AVAILABLE:
-                assert (
-                    False
-                ), "Please install xformers via e.g. 'pip install xformers==0.0.16'"
-            else:
+            if XFORMERS_IS_AVAILABLE:
                 logpy.info("Falling back to xformers efficient attention.")
                 attn_mode = "softmax-xformers"
+            else:
+                attn_mode = "softmax"
         attn_cls = self.ATTENTION_MODES[attn_mode]
         if version.parse(torch.__version__) >= version.parse("2.0.0"):
             assert sdp_backend is None or isinstance(sdp_backend, SDPBackend)

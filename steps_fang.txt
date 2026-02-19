@@ -1,0 +1,18 @@
+Train
+cd core
+python train_pflotran_dydiff.py \
+  --config_file models/pflotran/dydiff_pflotran_static.yaml
+
+
+Sample/test
+python train_pflotran_dydiff.py \
+  --config_file models/pflotran/dydiff_pflotran_static.yaml \
+  --resume ../logs/pflotran/<run>/checkpoints/<ckpt>.ckpt \
+  --test
+
+Evaluate
+python evaluation/evaluate_pflotran.py \
+  --model_output_root ../logs/pflotran/<run>/output_for_evaluation_<step> \
+  --input_length 20 \
+  --pred_length 20
+

@@ -1687,33 +1687,46 @@ class DiffusionWrapper(pl.LightningModule):
         
         if self.conditioning_key is None:
             out = self.diffusion_model(x, t)
-        
+        #''' Fang
         elif self.conditioning_key.startswith('concat-video-mask'):
             B, TC, H, W = x.shape
             C = TC // self.T
+
+            # existing mask for known frames
             mask = torch.zeros(B, self.T, H, W).to(x.device)
-            B, C_c, H, W = c_concat[0].shape
+            B2, C_c, H2, W2 = c_concat[0].shape
+            assert (B2, H2, W2) == (B, H, W)
+
             T_c = C_c // C
             mask[:, :T_c] = 1.
+
+            # place known frames into c_concat_all
             c_concat_all = torch.zeros_like(x)
             c_concat_all[:, :C_c] = c_concat[0]
+
+            # reshape per-frame
             x = rearrange(x, 'B (T C) H W -> (B T) C H W', T=self.T)
             c_concat_all = rearrange(c_concat_all, 'B (T C) H W -> (B T) C H W', T=self.T)
             mask = rearrange(mask, 'B T H W -> (B T) 1 H W', T=self.T)
+
             xc = torch.cat([x, c_concat_all, mask], dim=1)
+
             if '1st' in self.conditioning_key:
                 mask_1st = torch.zeros(B, self.T, H, W).to(x.device)
                 mask_1st[:, T_c] = 1.
                 mask_1st = rearrange(mask_1st, 'B T H W -> (B T) 1 H W', T=self.T)
                 xc = torch.cat([xc, mask_1st], dim=1)
-            if 'action' in self.conditioning_key:
-                actions = rearrange(c_concat[1], 'B T C -> (B T) C')
-                actions = torch.unsqueeze(torch.unsqueeze(actions, -1), -1)
-                actions = actions.repeat(1, 1, H, W)
-                xc = torch.cat([xc, actions], dim=1)
+
+            # ---- NEW: static spatial conditioning maps (perm/poro), tiled across time
+            if 'static' in self.conditioning_key:
+                # expect c_concat[1]: (B, C_static, H, W)
+                static = c_concat[1]
+                static = torch.repeat_interleave(static, self.T, dim=0)  # (B*T, C_static, H, W)
+                xc = torch.cat([xc, static], dim=1)
+
             t = torch.repeat_interleave(t, self.T, dim=0)
             out = self.diffusion_model(xc, t)
-            out = rearrange(out, '(B T) C H W -> B (T C) H W', T = self.T)
+            out = rearrange(out, '(B T) C H W -> B (T C) H W', T=self.T)
         
         elif self.conditioning_key == 'concat-video':
             # print('dpm wrapper', x.shape, c_concat[0].shape)

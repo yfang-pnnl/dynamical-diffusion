@@ -1,0 +1,17 @@
+#!/bin/csh
+#SBATCH -J pflo-dl
+#SBATCH -A dl_calibration
+#SBATCH --exclusive
+#SBATCH -t 3:00:00
+#SBATCH -N 1
+#SBATCH --gres=gpu:8
+#SBATCH -p a100_80_shared
+##SBATCH -p h100_shared
+##SBATCH -p a100_80
+##SBATCH --ntasks-per-node=1     
+#SBATCH -o logs_t/pflo_%A_%a.out
+#SBATCH -e logs_t/pflo_%A_%a.err
+source /people/d3m045/.cshrc_vs
+conda activate dydiff
+#python -m torch.distributed.run --standalone --nproc_per_node=8 train_da_initcont.py
+python core/train_pflotran_dydiff.py --config_file core/models/pflotran/diff_pflotran_static.yaml 

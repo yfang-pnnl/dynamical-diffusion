@@ -1,0 +1,114 @@
+# Configuration file for training dynamical diffusion on custom PFLOTRAN simulations
+# 
+# Replace DATA_ROOT with your actual data directory path
+# Update the paths below to point to your prepared data
+
+data:
+  # Path to your prepared data files
+  perm_path: /qfs/projects/dl_calibration/d3m045/test_dd/output/perm.npy        # (300, 40, 28)
+  poro_path: /qfs/projects/dl_calibration/d3m045/test_dd/output/poro.npy        # (300, 40, 28)
+  conc_path: /qfs/projects/dl_calibration/d3m045/test_dd/output/conc.npy        # (300, 240, 40, 28)
+  
+  # Path to split indices
+  train_idx_path: /qfs/projects/dl_calibration/d3m045/test_dd/output/train_idx.npy
+  val_idx_path: /qfs/projects/dl_calibration/d3m045/test_dd/output/val_idx.npy
+  test_idx_path: /qfs/projects/dl_calibration/d3m045/test_dd/output/test_idx.npy
+
+  # Temporal parameters
+  pred_length: 20              # Number of timesteps to predict (days)
+  input_length: 20             # Number of input timesteps (days)
+  total_length: 40             # Total: input + pred
+  t_keep: 240                  # Use only first 240 days
+  dt: 1                        # Timestep interval (1 = every day)
+
+model:
+  target: dydiff.dydiff_pflotran.DynamicalLDMForPFLOTRANWithStaticCondition
+  params:
+    total_length: 40
+    input_length: 20
+    x_channels: 1              # Concentration is 1 channel
+    z_channels: 3              # Compressed latent dimension
+    static_latent_channels: 8  # Latent channels for perm/poro conditioning
+
+    # Diffusion schedule
+    timesteps: 1000
+    beta_schedule: cosine
+    linear_start: 0.00085
+    linear_end: 0.0120
+
+    # Gamma schedule for variance
+    gamma_schedule: "cosine-0.5"
+    linear_start_gamma: 0.
+    linear_end_gamma: 0.
+
+    # Stage 1: VAE for concentration compression
+    first_stage_key: "image"
+    first_stage_key_prev: "prev"
+    cond_stage_key: "cond"
+    conditioning_key: "concat-video-mask-1st-static"
+    cond_stage_config:
+      target: torch.nn.Identity
+
+    # Validation settings
+    validate_kwargs:
+      ddim: True
+      ddim_steps: 50
+      ddim_eta: 0.
+
+    # First stage: AutoEncoder for concentration
+    first_stage_config:
+      target: ldm.models.autoencoder.AutoencoderKL
+      params:
+        ckpt_path: null
+        monitor: "val/rec_loss"
+        embed_dim: 3
+        lossconfig:
+          target: torch.nn.Identity
+        ddconfig:
+          double_z: True
+          z_channels: 3
+          resolution: 40          # Matches your nz=40
+          in_channels: 1
+          out_ch: 1
+          ch: 128
+          ch_mult: [1, 2]         # 2 stages: 40→20→10, 28→14→7
+          num_res_blocks: 2
+          attn_resolutions: []
+          dropout: 0.0
+
+    # UNet for diffusion
+    unet_config:
+      target: sgm.modules.diffusionmodules.video_model.VideoUNet
+      params:
+        num_video_frames: 0     # Will be set automatically
+        in_channels: 0          # Will be set automatically
+        out_channels: 0         # Will be set automatically
+        model_channels: 64
+        attention_resolutions: [2, 1]     # Adjusted for 2 stages
+        num_res_blocks: 2
+        channel_mult: [1, 2]              # 2 stages: 40→20→10, 28→14→7
+        num_heads: 4
+        transformer_depth: 1
+        spatial_transformer_attn_type: softmax
+        extra_ff_mix_layer: True
+        merge_strategy: learned
+        video_kernel_size: [3, 1, 1]
+
+training:
+  max_iterations: 200000
+  model_attrs:
+    learning_rate: 1e-4
+  batch_size: 16              # Adjust based on GPU memory
+  num_workers: 8              # CPU workers for data loading
+  validation_freq: null       # Validate every N steps (null = once per epoch)
+  accumulate_grad_batches: 1
+  logger:
+    save_dir: ./logs/custom_pflotran    # Where to save checkpoints/logs
+    logger_freq: 5000           # Log images every N steps
+    checkpoint_freq: 10000      # Save checkpoint every N steps
+
+eval:
+  num_vis: 5                  # Number of samples to visualize during validation
+
+# Checkpoint path (set when resuming training)
+ckpt_path: null

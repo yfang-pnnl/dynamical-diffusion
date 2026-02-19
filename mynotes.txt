@@ -1,0 +1,89 @@
+!diffusino model:
+sbatch job_simple.py
+sbatch job_evaluate.py
+
+pyhton check_new_eval.py
+
+python core/evaluation/visualize_pflotran.py \
+  --output_dir logs/custom_pflotran/pflotran_identity_eval/output_for_evaluation_0 \
+  --case_id 0 \
+  --all_plots
+
+Ran terminal command: python plot_timeseries.py --output_dir logs/custom_pflotran/pflotran_identity/output_for_evaluation_0 --case_idx 0 --z 19 --x 10
+
+logs/custom_pflotran/pflotran_identity_eval/output_for_evaluation_0/visualizations/case_0_full.png
+!
+# Remove old environment
+conda env remove -p /qfs/projects/dl_calibration/d3m045/envs/dydiff
+
+# Create base environment with conda packages
+conda env create -f environment.yaml -p /qfs/projects/dl_calibration/d3m045/envs/dydiff
+
+# Activate
+conda activate /qfs/projects/dl_calibration/d3m045/envs/dydiff
+
+# Install pip packages with flags to prevent building from source
+PIP_NO_BUILD_ISOLATION=1 pip install --no-build-isolation -r requirements.txt
+
+
+
+
+conda env create -f environment.yaml -p /qfs/projects/dl_calibration/d3m045/envs/dydiff
+
+For this specific session, all the fixes we made are now in your code files, so the key information is preserved:
+
+Fixed prepare_existing_stacked_data.py
+Fixed dydiff.py (syntax error)
+Fixed attention.py (PyTorch compatibility)
+Fixed custom_pflotran.yaml (architecture adjustments)
+Fixed dydiff_pflotran.py (static encoder)
+
+Fixed! The problem was that your data dimensions (40×28) aren't divisible by the number of downsampling stages. I reduced both the AutoEncoder and UNet from 3-4 stages to 2 stages:
+Fixed! The static_encoder was downsampling by 4× but the VAE (with 2 stages) only downsamples by 2×. I removed one stride-2 convolution layer.
+
+Now the dimensions match:
+
+Input: (40, 28)
+VAE latent: 40/2 = 20, 28/2 = 14 → (20, 14) ✓
+Static encoder: 40/2 = 20, 28/2 = 14 → (20, 14) ✓
+
+
+python prepare_existing_stacked_data.py --perm_path /qfs/projects/dl_calibration/d3m045/swi_code/field/realization1500_perm.npy --poro_path /qfs/projects/dl_calibration/d3m045/swi_code/field/realization1500_poro.npy --conc_path /qfs/projects/dl_calibration/d3m045/swi_code/init_input_file/runs/salinity_stack1.npy --output_dir /qfs/projects/dl_calibration/d3m045/test_dd/output --n_members 300 --n_timesteps 240 --material_path /qfs/projects/dl_calibration/d3m045/swi_code/field/material.npy
+
+
+split data:
+python create_data_splits.py \
+  --output_dir /path/to/processed/data/splits \
+  --n_realizations 300 \
+  --train_ratio 0.80 \
+  --val_ratio 0.16 \
+  --seed 42
+
+copy and edit configuration file :
+cp core/models/custom_pflotran.yaml core/models/my_data.yaml
+
+start training:
+python core/train_pflotran_dydiff.py \
+  --config_file core/models/my_data.yaml \
+  --n_gpu 1 
+if cpu use --n_gpu 0, support multiple gpus
+
+resume from checkpoint:
+python core/train_pflotran_dydiff.py \
+  --config_file core/models/my_data.yaml \
+  --resume /path/to/checkpoint.ckpt \
+  --n_gpu 1
+
+evaluate a trained model:
+python core/train_pflotran_dydiff.py \
+  --config_file core/models/my_data.yaml \
+  --resume /path/to/checkpoint.ckpt \
+  --test true \
+  --n_gpu 1
+
+visualization
+python core/evaluation/plot_pflotran_metrics.py \
+  --model_output_root ./logs/custom_pflotran/predictions \
+  --stats_path /path/to/normalization_stats.npy \
+  --input_length 20 \
+  --pred_length 20

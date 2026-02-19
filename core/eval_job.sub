@@ -1,0 +1,37 @@
+#!/bin/bash
+#SBATCH --job-name=eval-pflotran
+#SBATCH --account=dl_calibration
+#SBATCH --partition=a100_80_shared
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --gres=gpu:1
+#SBATCH --time=01:00:00
+#SBATCH --output=logs_t/eval_%j_%4t.out
+#SBATCH --error=logs_t/eval_%j_%4t.err
+
+# Usage: sbatch core/eval_job.sub <checkpoint_path>
+# Example: sbatch core/eval_job.sub logs/custom_pflotran/pflotran_identity/lightning_logs/version_515055/checkpoints/epoch=0-step=2000.ckpt
+
+# Load environment
+source /qfs/projects/dl_calibration/d3m045/envs/dydiff/bin/activate
+
+# Check if checkpoint path provided
+if [ -z "$1" ]; then
+    echo "Error: Please provide checkpoint path"
+    echo "Usage: sbatch core/eval_job.sub <checkpoint_path>"
+    exit 1
+fi
+
+CHECKPOINT_PATH=$1
+
+# Run evaluation
+python core/eval_pflotran_checkpoint.py \
+    --config core/models/pflotran_identity.yaml \
+    --checkpoint ${CHECKPOINT_PATH} \
+    --num_samples 5 \
+    --output_dir ./evaluation_results \
+    --split val \
+    --batch_size 8 \
+    --num_workers 8
+
+echo "Evaluation complete!"
