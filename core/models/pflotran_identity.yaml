@@ -51,11 +51,11 @@ model:
     cond_stage_config:
       target: torch.nn.Identity
 
-    # Validation settings (faster: 10 steps instead of 50)
+    # Validation settings
     validate_kwargs:
       ddim: True
-      ddim_steps: 10  # Reduced for faster validation (use 50 for final eval)
-      ddim_eta: 0.
+      ddim_steps: 50   # 50 steps for better sample quality
+      ddim_eta: 1.0    # CRITICAL: >0 enables stochastic sampling for calibrated ensembles (was 0.)
 
     # First stage: Identity (Pass-through)
     first_stage_config:
@@ -63,36 +63,47 @@ model:
         params:
             embed_dim: 1  # Not used but good for consistency
 
-    # UNet for diffusion (REDUCED FOR BETTER GENERALIZATION)
+    # UNet for diffusion (INCREASED CAPACITY for better generalization)
     unet_config:
       target: sgm.modules.diffusionmodules.video_model.VideoUNet
       params:
         num_video_frames: 0     # Will be set automatically
         in_channels: 0          # Will be set automatically
         out_channels: 0         # Will be set automatically
-        model_channels: 32      # Reduced from 64 to prevent overfitting
-        attention_resolutions: [2]
-        num_res_blocks: 1       # Reduced from 2
-        channel_mult: [1, 2]    # Reduced from [1,2,4]
-        num_heads: 2            # Reduced from 4
+        model_channels: 64      # Increased from 32 for more capacity
+        attention_resolutions: [2, 4]  # Attention at 2x and 4x downsampled scales
+        num_res_blocks: 2       # Increased from 1
+        channel_mult: [1, 2, 4] # Increased from [1, 2] — 3 scales
+        num_heads: 4            # Increased from 2
         transformer_depth: 1
         spatial_transformer_attn_type: softmax
         extra_ff_mix_layer: True
         merge_strategy: learned
         video_kernel_size: [3, 1, 1]
 
+    # LR warmup + cosine decay (use base learning_rate: 1.0 with this scheduler)
+    scheduler_config:
+      target: sgm.lr_scheduler.LambdaWarmUpCosineScheduler
+      params:
+        warm_up_steps: 2000     # Ramp up over first 2000 steps
+        lr_min:   1.0e-7        # Floor LR at end of training
+        lr_max:   1.0e-4        # Peak LR after warmup
+        lr_start: 1.0e-7        # Starting LR before warmup
+        max_decay_steps: 50000  # Matches max_iterations
+
 training:
-  max_iterations: 20000        # Train longer with smaller model
+  max_iterations: 50000        # Extended for larger model (was 20000)
   model_attrs:
-    learning_rate: 5e-5        # Reduced from 1e-4 for stability
+    learning_rate: 1.0         # Use 1.0 as base; actual LR controlled by scheduler_config above
   batch_size: 4                # Per GPU (effective batch = n_gpu × batch_size × accumulate_grad_batches)
+  gradient_clip_val: 1.0       # Clip gradients to prevent explosion
   num_workers: 2               # Auto-reduced for multi-GPU to avoid overhead
-  validation_freq: 5000        # Validate every ~3 epochs (less frequent = faster training)
-  accumulate_grad_batches: 4   # Single GPU: effective_batch=4, Multi-GPU (4): effective_batch=16
+  validation_freq: 10000       # Less frequent to save time with larger model (was 750)
+  accumulate_grad_batches: 4   # effective_batch per GPU = 4×4=16, total = 16×8 GPUs = 128
   logger:
-    save_dir: ./logs/custom_pflotran/pflotran_identity
+    save_dir: ./logs/custom_pflotran
     logger_freq: null           # Log images every N steps
-    checkpoint_freq: 2000      # Save checkpoint every N steps
+    checkpoint_freq: 5000      # Save checkpoint every N steps
 
 eval:
   num_vis: 5                  # Number of samples to visualize during validation

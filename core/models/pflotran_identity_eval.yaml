@@ -54,8 +54,8 @@ model:
     # Validation settings
     validate_kwargs:
       ddim: True
-      ddim_steps: 10  # Ultra-fast for testing (increase to 50 for final evaluation)
-      ddim_eta: 0.
+      ddim_steps: 50    # 50 steps for production-quality samples
+      ddim_eta: 1.0     # CRITICAL: stochastic sampling for calibrated ensemble uncertainty
 
     # First stage: Identity (Pass-through)
     first_stage_config:
@@ -87,7 +87,7 @@ training:
     learning_rate: 1e-4
   batch_size: 4                # Increased from 1 (effective batch = 2 × 8 × 4 = 64)
   num_workers: 0               # Increased for better data loading performance
-  validation_freq: 5000        # Validate every ~3 epochs (less frequent = faster training)
+  validation_freq: 100000      # Skip validation during training (was null = every epoch)
   accumulate_grad_batches: 4   
   logger:
     save_dir: ./logs/custom_pflotran    
@@ -98,4 +98,4 @@ eval:
   num_vis: 5                  # Number of samples to visualize during validation
 
 # Checkpoint path (CRITICAL: MUST use trained model for evaluation!)
-ckpt_path: logs/custom_pflotran/pflotran_identity/epoch=18-step=7161.ckpt
+ckpt_path: logs/custom_pflotran/pflotran_identity/epoch=15-step=6000.ckpt
