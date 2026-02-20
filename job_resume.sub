@@ -1,0 +1,42 @@
+#!/bin/csh
+#SBATCH -J pflo-resume
+#SBATCH -A dl_calibration
+#SBATCH --exclusive
+#SBATCH -t 8:00:00
+#SBATCH -N 1
+#SBATCH --gres=gpu:8
+#SBATCH -p a100_80
+##SBATCH -p h100_shared
+#SBATCH -o logs_t/pflo_%A_%a.out
+#SBATCH -e logs_t/pflo_%A_%a.err
+
+# === Resume Training from Checkpoint ===
+# Continues training with the improved config (bigger UNet, LR scheduler,
+# ddim_eta=1.0, 50k steps) starting from the best existing checkpoint.
+
+# Checkpoint to resume from
+setenv CHECKPOINT "logs/custom_pflotran/pflotran_identity/epoch=19-step=7538.ckpt"
+
+source /people/d3m045/.cshrc_vs
+conda activate dydiff
+
+# Reduce memory fragmentation
+setenv PYTORCH_CUDA_ALLOC_CONF max_split_size_mb:128
+
+echo "========================================="
+echo "Resuming PFLOTRAN DyDiff Training"
+echo "========================================="
+echo "Checkpoint : $CHECKPOINT"
+echo "Config     : core/models/pflotran_identity.yaml"
+echo "GPUs       : 8"
+echo "========================================="
+
+python core/train_pflotran_dydiff.py \
+  --config_file core/models/pflotran_identity.yaml \
+  --n_gpu 8 \
+  --find_unused_parameters True \
+  --resume $CHECKPOINT
+
+echo "========================================="
+echo "Training finished."
+echo "========================================="

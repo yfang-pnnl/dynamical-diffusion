@@ -98,12 +98,12 @@ training:
   batch_size: 4                # Per GPU (effective batch = n_gpu × batch_size × accumulate_grad_batches)
   gradient_clip_val: 1.0       # Clip gradients to prevent explosion
   num_workers: 2               # Auto-reduced for multi-GPU to avoid overhead
-  validation_freq: 10000       # Less frequent to save time with larger model (was 750)
+  validation_freq: 1500       # Less frequent to save time with larger model (was 750)
   accumulate_grad_batches: 4   # effective_batch per GPU = 4×4=16, total = 16×8 GPUs = 128
   logger:
     save_dir: ./logs/custom_pflotran
     logger_freq: null           # Log images every N steps
-    checkpoint_freq: 5000      # Save checkpoint every N steps
+    checkpoint_freq: 1500      # Save checkpoint every N steps
 
 eval:
   num_vis: 5                  # Number of samples to visualize during validation
