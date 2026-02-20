@@ -63,18 +63,18 @@ model:
         params:
             embed_dim: 1  # Not used but good for consistency
 
-    # UNet for diffusion (INCREASED CAPACITY for better generalization)
+    # UNet for diffusion (
     unet_config:
       target: sgm.modules.diffusionmodules.video_model.VideoUNet
       params:
         num_video_frames: 0     # Will be set automatically
         in_channels: 0          # Will be set automatically
         out_channels: 0         # Will be set automatically
-        model_channels: 64      # Increased from 32 for more capacity
-        attention_resolutions: [2, 4]  # Attention at 2x and 4x downsampled scales
-        num_res_blocks: 2       # Increased from 1
-        channel_mult: [1, 2, 4] # Increased from [1, 2] — 3 scales
-        num_heads: 4            # Increased from 2
+        model_channels: 32      # Increased from 32 for more capacity
+        attention_resolutions: [2]  # Attention at 2x and 4x downsampled scales
+        num_res_blocks: 1       # Increased from 1
+        channel_mult: [1, 2] # Increased from [1, 2] — 3 scales
+        num_heads: 2            # Increased from 2
         transformer_depth: 1
         spatial_transformer_attn_type: softmax
         extra_ff_mix_layer: True
