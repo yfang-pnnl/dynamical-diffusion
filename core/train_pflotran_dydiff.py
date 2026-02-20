@@ -70,10 +70,13 @@ def create_loggers(cfg):
         keys_to_concat=["inputs", "samples"],
         log_images_kwargs=dict(cfg.model.params.validate_kwargs)
     )
+    _ckpt_steps = cfg.training.logger.checkpoint_freq if 'checkpoint_freq' in cfg.training.logger else 0
+    _ckpt_epochs = cfg.training.logger.checkpoint_freq_epochs if 'checkpoint_freq_epochs' in cfg.training.logger else 1
+    # every_n_train_steps and every_n_epochs are mutually exclusive; steps takes priority
     checkpoint_logger = ModelCheckpoint(
         dirpath=cfg.training.logger.save_dir,
-        every_n_epochs=cfg.training.logger.checkpoint_freq_epochs if 'checkpoint_freq_epochs' in cfg.training.logger else 1,
-        every_n_train_steps=cfg.training.logger.checkpoint_freq if 'checkpoint_freq' in cfg.training.logger else 0,
+        every_n_train_steps=_ckpt_steps if _ckpt_steps > 0 else 0,
+        every_n_epochs=0 if _ckpt_steps > 0 else _ckpt_epochs,
         save_top_k=-1
     )
     return [image_logger, checkpoint_logger]

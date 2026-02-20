@@ -85,15 +85,14 @@ training:
   max_iterations: 20000        # Train longer with smaller model
   model_attrs:
     learning_rate: 5e-5        # Reduced from 1e-4 for stability
-  batch_size: 8                # Per GPU (effective batch = n_gpu × batch_size × accumulate_grad_batches)
-  gradient_clip_val: 1.0       # Clip gradients to prevent explosion
+  batch_size: 4                # Per GPU (effective batch = n_gpu × batch_size × accumulate_grad_batches)
   num_workers: 2               # Auto-reduced for multi-GPU to avoid overhead
-  validation_freq: 750         # Validate ~every epoch (8-GPU: 754 batches/epoch with batch_size=8)
-  accumulate_grad_batches: 2   # effective_batch per GPU = 8×2=16, total = 16×8 GPUs = 128 (same as before)
+  validation_freq: 5000        # Validate every ~3 epochs (less frequent = faster training)
+  accumulate_grad_batches: 4   # Single GPU: effective_batch=4, Multi-GPU (4): effective_batch=16
   logger:
-    save_dir: ./logs/custom_pflotran
+    save_dir: ./logs/custom_pflotran/pflotran_identity
     logger_freq: null           # Log images every N steps
-    checkpoint_freq_epochs: 1  # Save checkpoint every N epochs (replaces step-based checkpoint_freq)
+    checkpoint_freq: 2000      # Save checkpoint every N steps
 
 eval:
   num_vis: 5                  # Number of samples to visualize during validation

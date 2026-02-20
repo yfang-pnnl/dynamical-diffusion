@@ -200,7 +200,7 @@ def visualize_predictions(output_dir, cfg, num_vis_cases=5):
         
         plt.suptitle(f'Test Case {case_idx} - Concentration (mol/L)', fontsize=14, y=0.995)
         plt.tight_layout()
-        
+        plt.show() 
         save_path = os.path.join(vis_dir, f'case_{case_idx}.png')
         plt.savefig(save_path, dpi=150, bbox_inches='tight')
         plt.close()

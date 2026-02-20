@@ -13,7 +13,7 @@
 # and generates predictions for visualization and metric computation.
 
 # Configuration - EDIT THESE
-setenv CHECKPOINT "logs/custom_pflotran/pflotran_identity/epoch=15-step=6000.ckpt"
+setenv CHECKPOINT "logs/custom_pflotran/pflotran_identity/epoch=18-step=7161.ckpt"
 setenv CONFIG_FILE "core/models/pflotran_identity_eval.yaml"
 setenv N_GPU 1
 
@@ -46,3 +46,24 @@ echo ""
 echo "Next steps:"
 echo "  1. Visualize results: python core/evaluation/visualize_pflotran.py"
 echo "  2. Plot metrics: python core/evaluation/plot_pflotran_metrics.py ..."
+
+
+python core/evaluation/visualize_pflotran.py \
+  --output_dir logs/custom_pflotran/pflotran_identity_eval/output_for_evaluation_0 \
+  --case_id 0 \
+  --input_length 20
+
+python core/evaluation/plot_pflotran_metrics.py \
+  --model_output_root logs/custom_pflotran/pflotran_identity_eval/output_for_evaluation_0 \
+  --stats_path /qfs/projects/dl_calibration/d3m045/dataset/normalization_stats.npy \
+  --input_length 20 \
+  --pred_length 20 \
+  --out_dir logs/custom_pflotran/pflotran_identity_eval/metrics_output
+
+
+python plot_timeseries.py \
+  --output_dir logs/custom_pflotran/pflotran_identity_eval/output_for_evaluation_0 \
+  --case_id 0 \
+  --z 20 \
+  --x 10 \
+  --input_length 20

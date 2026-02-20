@@ -91,7 +91,7 @@ def plot_timeseries_at_location(output_dir, case_id=0, z=20, x=10, input_length=
     
     # Set y-axis to log scale
     ax.set_yscale('log')
-    ax.set_ylim(1e-10, 1.5)  # From minimum non-zero value to slightly above 1
+    ax.set_ylim(1e-6, 1.5)  # From minimum non-zero value to slightly above 1
     
     # Add horizontal line at maximum concentration
     ax.axhline(y=1.0, color='gray', linestyle=':', linewidth=1, alpha=0.5)
@@ -114,7 +114,7 @@ def plot_timeseries_at_location(output_dir, case_id=0, z=20, x=10, input_length=
             bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
     
     plt.tight_layout()
-    
+    plt.show() 
     if save_path:
         plt.savefig(save_path, dpi=150, bbox_inches='tight')
         print(f"✓ Saved time series plot: {save_path}")

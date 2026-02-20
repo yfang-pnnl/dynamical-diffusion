@@ -87,7 +87,7 @@ training:
     learning_rate: 1e-4
   batch_size: 4                # Increased from 1 (effective batch = 2 × 8 × 4 = 64)
   num_workers: 0               # Increased for better data loading performance
-  validation_freq: 100000      # Skip validation during training (was null = every epoch)
+  validation_freq: 5000        # Validate every ~3 epochs (less frequent = faster training)
   accumulate_grad_batches: 4   
   logger:
     save_dir: ./logs/custom_pflotran    
@@ -98,4 +98,4 @@ eval:
   num_vis: 5                  # Number of samples to visualize during validation
 
 # Checkpoint path (CRITICAL: MUST use trained model for evaluation!)
-ckpt_path: logs/custom_pflotran/pflotran_identity/epoch=15-step=6000.ckpt
+ckpt_path: logs/custom_pflotran/pflotran_identity/epoch=18-step=7161.ckpt
