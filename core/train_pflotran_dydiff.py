@@ -147,11 +147,17 @@ if __name__=='__main__':
         default_root_dir=cfg.training.logger.save_dir,
         max_steps=cfg.training.max_iterations,
         accumulate_grad_batches=cfg.training.accumulate_grad_batches,
-        val_check_interval=int(cfg.training.validation_freq) if cfg.training.validation_freq is not None else float(1.),
         num_sanity_val_steps=0,
         sync_batchnorm=True if args.n_gpu > 1 else False,  # Sync batch norm across GPUs
         gradient_clip_val=cfg.training.gradient_clip_val if 'gradient_clip_val' in cfg.training else None,  # Optional gradient clipping
     )
+    # Validation frequency: epoch-based takes priority (avoids val_check_interval > batches/epoch error)
+    if 'validation_freq_epochs' in cfg.training:
+        trainer_kwargs['check_val_every_n_epoch'] = int(cfg.training.validation_freq_epochs)
+    elif 'validation_freq' in cfg.training and cfg.training.validation_freq is not None:
+        trainer_kwargs['val_check_interval'] = int(cfg.training.validation_freq)
+    else:
+        trainer_kwargs['val_check_interval'] = float(1.)
     
     # Configure DDP strategy if using multiple GPUs
     if args.n_gpu > 1:
